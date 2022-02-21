@@ -1,6 +1,6 @@
 ﻿#Script to query Azure Update Compliance, then write out info on devices to CSV including:
 #Device Name, Assigned User, UPN, OS Version, and update status
-#Written 13/12/2021 by Gareth Pullen (grp43) - with bits grabbed from online
+#Written 13/12/2021 by Gareth Pullen (grp43) - with functions grabbed from online
 
 function Get-AuthToken {
 #https://www.powershellgallery.com/packages/UnofficialIntuneManagement/0.2.0.0/Content/Private%5CGet-AuthToken.ps1
@@ -185,10 +185,14 @@ function Get-IntuneDevicePrimaryUser {
         throw "Get-IntuneDevicePrimaryUser error"
     }
 }
+
+#Above functions grabbed online. Here on out is written by Gareth.
+
 function Azure-Connect {
     $UPN = whoami /upn
     #Connect to AzureAD (Prompts for login)
     Try {
+    #This IF statement avoids a login prompt if the running-user is already linked with AzureAD
         if ($UPN -match "@med*") {
             Connect-AzureAD -AccountId $UPN -EA SilentlyContinue | out-null
         }
@@ -208,12 +212,14 @@ $Query = Invoke-AzOperationalInsightsQuery -WorkspaceId "<Workspace ID goes here
 $Computers = $Query.Results
 $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
 if ($ExportPath -match '\\$') {
+    #Removes trailing "\" if it's there.
     $ExportPath = $ExportPath.TrimEnd('\')
 }
 $authToken = Get-AuthToken
 Connect-MSGraph
 Foreach ($Computer in $Computers) {
     $CompName = $Computer.Computer
+    #These 2 IF statements catch computers without a name or called "#" and skip over them.
     If ($CompName  -eq ""){
         Continue
     }
@@ -228,6 +234,7 @@ Foreach ($Computer in $Computers) {
             $User = Get-AzureADUser -ObjectId $IntuneDevicePrimaryUser    
     }
     else {
+        #No user assigned, so we pre-fill these parts of the Hash.
         $User = @{DisplayName = "Not Assigned"
                   Mail = "Not Assigned"}
     }
