@@ -25,16 +25,23 @@ Catch {
         Set-PSRepository -Name 'PSGallery' -InstallationPolicy Untrusted
     }
 }
-
+#Get the current user UPN - may avoid login prompt
+$UPN = whoami /upn
 #Connect to AzureAD (Prompts for login)
 Try {
-    Connect-AzureAD -EA SilentlyContinue
+    if ($UPN -match "@med*") {
+    #UPN is an AAD one, try to login with that.
+        Connect-AzureAD -AccountId $UPN -EA SilentlyContinue | out-null
     }
+    Else {
+        Connect-AzureAD -EA SilentlyContinue | out-null
+    }
+}
 Catch {
     Write-Output "Error Occurred:"
     Write-Output $_
     Exit
-    }
+}
 
 $Groups = Get-AzureADGroup -All $true | Out-GridView -Passthru 
 If ($Groups -eq $Null){
@@ -67,7 +74,7 @@ if ($Groups -is [System.Array]) {
         $Output = 'Add-LocalGroupMember -Group Administrators -Member "'+$GroupSID+'"'
         Add-Content -Path $FullPath -Value $Output
     }
-} Else {
+} Else { #Not an array, single entry
     $GroupSID = Convert-ObjectIdToSid($Groups.ObjectId)
     $Output = 'Add-LocalGroupMember -Group Administrators -Member "'+$GroupSID+'"'
     Add-Content -Path $FullPath -Value $Output
