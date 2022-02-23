@@ -71,10 +71,13 @@ $EndTimeFormatted = $EndDate + " " + $EndTime
 
 $SomeLogs = Read-Host "Do you want to search all logs, or choose which to view? ('Y' to choose, 'N' for all logs - default is all)"
 If ($SomeLogs -eq "Y") {
+    #Show a list of all logs with some events in them.
     $LogSelection = Get-WinEvent -ListLog * | Select-Object LogName, RecordCount, IsEnabled, LogType | Where-Object RecordCount -gt "0" | Out-GridView -PassThru
+    #Call the Get-Events function with the list of selected logs.
     Get-Events -ComputerName $RemotePC -StartTimestamp $StartTimeFormatted -EndTimestamp $EndTimeFormatted -LogSelection $LogSelection | Out-GridView
 }
 Else {
+    #Get events from all logs - call the function without "LogSelection" variable set.
     Get-Events -ComputerName $RemotePC -StartTimestamp $StartTimeFormatted -EndTimestamp $EndTimeFormatted | Out-GridView
 }
 
