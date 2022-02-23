@@ -1,6 +1,6 @@
 ﻿#Script to query Azure Update Compliance, then write out info on devices to CSV including:
 #Device Name, Assigned User, UPN, OS Version, and update status
-#Written 13/12/2021 by Gareth Pullen (grp43) - with functions grabbed from online
+#Written 13/12/2021 by Gareth Pullen - with functions grabbed from online
 
 function Get-AuthToken {
 #https://www.powershellgallery.com/packages/UnofficialIntuneManagement/0.2.0.0/Content/Private%5CGet-AuthToken.ps1
