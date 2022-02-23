@@ -10,16 +10,18 @@ function Convert-ObjectIdToSid
 
     $d=[UInt32[]]::new(4);[Buffer]::BlockCopy([Guid]::Parse($ObjectId).ToByteArray(),0,$d,0,16);"S-1-12-1-$d".Replace(' ','-')
 }
-
+#Next line takes a while as it grabs all groups from AAD, before displaying them to the user to choose.
 $Groups = Get-AzureADGroup -All $true | Out-GridView -Passthru | ForEach { [pscustomobject] @{ Name= $_.DisplayName; Sid=Convert-ObjectIdToSid($_.ObjectId)}} 
 $GroupSID = $Groups |Select-Object -ExpandProperty  SID
 
 #Prompt for a path, check it's valid
 $SaveFilePath = Read-Host "Please enter a path to save the script in"
 if (-not(Test-Path -Path $SaveFilePath)){
-Do {$SaveFilePath = Read-Host "Please enter a valid path"}
-Until (Test-Path $SaveFilePath)}
+#Path not valid, so prompt for it again
+    Do {$SaveFilePath = Read-Host "Please enter a valid path"}
+    Until (Test-Path $SaveFilePath)}
 if (-not($SaveFilePath.EndsWith("\"))){
+    #Doesn't end with a "\" so add one
     $SaveFilePath = $SaveFilePath+"\"}
 
 #Prompt for a script name, add PS1 if necessary
