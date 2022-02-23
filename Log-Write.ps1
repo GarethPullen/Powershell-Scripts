@@ -1,3 +1,4 @@
+#Written by Gareth Pullen - function to write to a log-file. First foray into including the "Description", "Synopsis" etc.
 Function Log_Output{
 Param (
 [Parameter(Mandatory = $true,
