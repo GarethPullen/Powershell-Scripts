@@ -1,6 +1,8 @@
 <#
-Written Gareth Pullen 16/03/2021 to add AzureAD group to the local Administrators Group on a PC
+Written Gareth Pullen 16/03/2021 Queries AzureAD for list of groups, will then produce a PowerShell script to add selected groups to local Administrators group.
+Useful for adding to Intune Scripts to deploy on a group of devices.
 Updated 24/03/2021 to install the AzureAD module if required, and handle errors better
+Updated 03/2022 to use local user for AAD login if possible.
 #>
 
 
