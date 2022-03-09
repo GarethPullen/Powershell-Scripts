@@ -31,7 +31,12 @@ If(!(Test-Path -path $log_file_full))
 #Now write what we were passed in "$Log_Data":
 $outline_prefix = Get-Date -Format "dd-MM-yyyy HH:mm:ss.fff"
 $outline = "$outline_prefix  " + $Log_Output
-Add-Content -path $log_file_full -Value $outline
+    try {
+        Add-Content -path $log_file_full -Value $outline -ErrorAction Stop
+    }
+    catch {
+        Write-Error "Failed to write to log file!"
+    }
 
 <#
 .SYNOPSIS
