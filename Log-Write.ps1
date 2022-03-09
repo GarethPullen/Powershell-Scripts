@@ -23,7 +23,7 @@ If(!(Test-Path -path $Log_Folder))
 ##Create local log file if it doesn't already exist and log this action
 If(!(Test-Path -path $log_file_full))
 	{
-	New-Item -path $log_file_full -Type File
+	New-Item -path $log_file_full -Type File |out-null
 	$outline_prefix = Get-Date -Format "dd-MM-yyyy HH:mm:ss.fff"
     $outline = "$outline_prefix  " + "Created log file"
     Add-Content -path $log_file_full -Value $outline
