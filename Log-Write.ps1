@@ -18,7 +18,12 @@ $log_file_full = $Log_Folder + $Log_file
 ##Create Log folder if not already present
 If(!(Test-Path -path $Log_Folder))
 	{
-	New-Item -Path $Log_Folder -Type Directory
+	Try {
+            New-Item -Path $Log_Folder -Type Directory -ErrorAction Stop -ErrorVariable FolderCreateError
+            }
+        Catch {
+            Write-Error $FolderCreateError.Message
+              }
 	}
 ##Create local log file if it doesn't already exist and log this action
 If(!(Test-Path -path $log_file_full))
