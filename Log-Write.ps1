@@ -26,17 +26,18 @@ If(!(Test-Path -path $Log_Folder))
               }
 	}
 ##Create local log file if it doesn't already exist and log this action
-If(!(Test-Path -path $log_file_full))
-	{
-	New-Item -path $log_file_full -Type File |out-null
-	$outline_prefix = Get-Date -Format "dd-MM-yyyy HH:mm:ss.fff"
-    $outline = "$outline_prefix  " + "Created log file"
-     try {
-        Add-Content -path $log_file_full -Value $outline -ErrorAction Stop
-    }
-    catch {
-             Write-Error "Failed to write to log file!"
-    	  }
+	If (!(Test-Path -path $log_file_full)) {
+		Try {
+			New-Item -path $log_file_full -Type File | out-null -ErrorAction Stop
+			$outline_prefix = Get-Date -Format "dd-MM-yyyy HH:mm:ss.fff"
+			$outline = "$outline_prefix  " + "Created log file"
+			Add-Content -path $log_file_full -Value $outline -ErrorAction Stop
+		}
+		catch {
+			Write-Error "Failed to create or write to log file!"
+			Exit
+		}
+
 	}
 #Now write what we were passed in "$Log_Data":
 $outline_prefix = Get-Date -Format "dd-MM-yyyy HH:mm:ss.fff"
