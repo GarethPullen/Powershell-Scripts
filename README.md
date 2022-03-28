@@ -33,3 +33,7 @@ This script creates a shortcut on the Desktop and Start Menu, sets the icon to b
 
 # Updates-Reporting.ps1
 This script queries Azure Update Compliance and writes to a CSV file: Device Name, Assigned User, UPN, OS Version, and update status - allows for better mapping of users to device names than the built-in Update Compliance page, which just lists device names & not users. 
+
+# Intune-devices-no-user.ps1
+This script takes a "Device Configuration ID" (found on the Intune portal) and then queries using the Graph API for all devices with that configuration profile applied. Checks if the user account associated with the property is "System Account" or a "Test account" - if those are the only accounts associated with it, then we assume no user has signed in, as it should be associated with a "normal" Users' UPN.
+Can either save it to a CSV file, or display in a window using Powershell's "Out-GridView" function.
