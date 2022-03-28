@@ -17,3 +17,19 @@ This script lists all AzureAD groups, the user can then select one or more of th
 This script reads the Local Administrators group on the machine it is run on, then looks up the SID's against the AzureAD groups, to then convert them into the group names. Useful as the Windows Groups viewer can't properly handle the AzureAD group SID to Name conversion itself (you end up with a bunch of SIDs listed, which are difficult to manually convert!)
 
 # Log-Write.ps1
+Function to write to a log-file. First foray into including the "Description", "Synopsis" etc.
+Intended to be re-used within other scripts to allow easy logging. Has optional variables for file-name and folder path, with defaults set if nothing is specified.
+
+# Network-Config.ps1
+Checks the network interfaces to see:
+1) If the IP matches one of our range (array at the top of the sciprt)
+2) If it is a "Fortinet" connection - VPN, sets this as Private too to ensure correct profile for it.
+3) If it is listed as Public or Private
+If it is on our range, not the VPN and Public, marks it as Private.
+This was developed as when onboarding a department to Intune we found Windows marked the network as Public by default, blocking various remote-tools.
+
+# Shortcut-Creator.ps1
+This script creates a shortcut on the Desktop and Start Menu, sets the icon to be a blue "Question mark" icon, and creates a registry key to confirm it has been set. Allows us to create a shortcut to usefuld documentation for users. The registry key means if they delete the file we don't just re-create it.
+
+# Updates-Reporting.ps1
+This script queries Azure Update Compliance and writes to a CSV file: Device Name, Assigned User, UPN, OS Version, and update status - allows for better mapping of users to device names than the built-in Update Compliance page, which just lists device names & not users. 
