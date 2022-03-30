@@ -10,8 +10,12 @@ This script is quite simple, it checks if it can ping the print-server, and if s
 # Get-Events.ps1
 This script prompts the user for a computer-name (defaults to Local Host) and a time-range (defaults to "the last 24 hours"), it then asks if the user wants to select which event logs to display, or show all events. Extremely useful for identifying errors when you know the approximate time, as Windows has a lot more Event Logs than the standard "Application", "System" and "Security".
 
+# add-group-to-admin-v2.ps1
+V2 of the "Add group to admin" script. Generated scripts don't produce an error if the group is already a member of the Administrators group, when deployed via Intune > Scripts. This script lists all AzureAD groups, the user can then select one or more of them, it prompts for an output folder & file-name, and then produces a PowerShell script to add the group(s) to the local Administrators Group.
+
 # Intune-add-group-to-admin.ps1
-This script lists all AzureAD groups, the user can then select one or more of them, it prompts for an output folder & file-name, and then produces a simple PowerShell script to add that user group to the local Administrators Group. The generated script can be uploaded to the Intune > Scripts section to run on devices automatically. 
+*** This has been superseded by the "V2" script above. Left here for posterity.
+This script lists all AzureAD groups, the user can then select one or more of them, it prompts for an output folder & file-name, and then produces a simple PowerShell script to add the group(s) to the local Administrators Group. The generated script can be uploaded to the Intune > Scripts section to run on devices automatically. 
 
 # Local-Admin-to-Names.ps1
 This script reads the Local Administrators group on the machine it is run on, then looks up the SID's against the AzureAD groups, to then convert them into the group names. Useful as the Windows Groups viewer can't properly handle the AzureAD group SID to Name conversion itself (you end up with a bunch of SIDs listed, which are difficult to manually convert!)
