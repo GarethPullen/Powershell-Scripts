@@ -67,7 +67,7 @@ $CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
 
 $ExportFull = $ExportPath + "\" + $CheckPathSplit + "-Streams.csv"
 
-List-Streams "$CheckPath" | Export-Csv $ExportFull
+List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
 
 If ($Global:ErrorFiles -ne "") {
     $ExportError = $ExportPath + "\" + $CheckPathSplit + "-Errors.csv"
