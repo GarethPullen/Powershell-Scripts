@@ -1,11 +1,12 @@
 #Written by Gareth Pullen 15/06/2022 to look for ADS Streams - Main Stream function credited from website.
 #Modified 16-17/06/2022 - to prompt user for folders, handle errors.
 #Modified 20/06/2022 - Fixed exporting errors to CSV, changed to use Write-Verbose and Write-Error
+#Modified 21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys
 
 [CmdletBinding()]
 Param()
 #Global Variable to catch Error Files
-$Global:ErrorFiles = @{}
+$Global:ErrorFiles = New-Object System.Collections.Generic.List[System.Object]
 
 Function Get-Streams {
     #Taken & modified from https://jdhitsolutions.com/blog/scripting/8888/friday-fun-with-powershell-and-alternate-data-streams/
@@ -19,7 +20,7 @@ Function Get-Streams {
     }
     Catch { 
         Write-Error -Message "Failed to check Stream $Path"
-        $Global:ErrorFiles += @{Error = "Failed to check stream"; Path = "$Path" }
+        $Global:ErrorFiles.add("Failed to check stream,$Path")
     }
 }
 
@@ -32,7 +33,7 @@ Function List-Streams {
     }
     Catch { 
         Write-Error -Message "Failed to list path $FolderPath" 
-        $Global:ErrorFiles += @{Error = "Unable to list path"; Path = "$FolderPath" }
+        $Global:ErrorFiles.Add("Unable to list path,$FolderPath")
     }
     foreach ($Item in $Items) {
         Try {
@@ -41,7 +42,7 @@ Function List-Streams {
         }
         Catch { 
             Write-Error -Message "Unable to find $CurrentPath"
-            $Global:ErrorFiles += @{Error = "Can't find"; Path = "$CurrentPath" }
+            $Global:ErrorFiles.Add("Can't find,$CurrentPath")
         }
         Get-Streams $CurrentPath
     }
@@ -77,8 +78,9 @@ $ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
 Write-Verbose -Message "Now calling function to check streams in $CheckPath"
 List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
 
-If ($Global:ErrorFiles -ne "") {
+If ($Global:ErrorFiles) {
     $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
     Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
-    [PSCustomObject]$Global:ErrorFiles | Export-Csv -Notypeinformation -path $ExportError
+    $ExportObj = $Global:ErrorFiles | Select-Object @{Name='Error';Expression={$_.Split(",")[0]}}, @{Name='Path';Expression={$_.Split(",")[1]}}
+    $ExportObj | Export-Csv -Notypeinformation -path $ExportError
 }
