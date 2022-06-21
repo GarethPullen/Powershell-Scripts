@@ -4,7 +4,9 @@
 #Modified 21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys
 
 [CmdletBinding()]
-Param()
+Param([switch] $Silent)
+#Switch above to allow "-silent" to be called.
+
 #Global Variable to catch Error Files
 $Global:ErrorFiles = New-Object System.Collections.Generic.List[System.Object]
 
@@ -19,7 +21,10 @@ Function Get-Streams {
         Stream, @{Name = "Size"; Expression = { $_.length } }
     }
     Catch { 
-        Write-Error -Message "Failed to check Stream $Path"
+        If (!$Silent.IsPresent) {
+            #Silent switch not called, will write to console.
+            Write-Error -Message "Failed to check Stream $Path"
+        }
         $Global:ErrorFiles.add("Failed to check stream,$Path")
     }
 }
@@ -31,8 +36,11 @@ Function List-Streams {
         Write-Verbose -Message "Getting files & folders in $FolderPath"
         $Items = Get-ChildItem $FolderPath -Recurse
     }
-    Catch { 
-        Write-Error -Message "Failed to list path $FolderPath" 
+    Catch {
+        If (!$Silent.IsPresent) {
+            #Silent switch not called, will write to console. 
+            Write-Error -Message "Failed to list path $FolderPath" 
+        }
         $Global:ErrorFiles.Add("Unable to list path,$FolderPath")
     }
     foreach ($Item in $Items) {
@@ -40,8 +48,11 @@ Function List-Streams {
             Write-Verbose -Message "Checking $Item"
             $CurrentPath = Convert-Path -Path $Item.PSPath -ErrorAction Stop
         }
-        Catch { 
-            Write-Error -Message "Unable to find $CurrentPath"
+        Catch {
+            If (!$Silent.IsPresent) {
+                #Silent switch not called, will write to console. 
+                Write-Error -Message "Unable to find $CurrentPath"
+            }
             $Global:ErrorFiles.Add("Can't find,$CurrentPath")
         }
         Get-Streams $CurrentPath
@@ -81,6 +92,6 @@ List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
 If ($Global:ErrorFiles) {
     $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
     Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
-    $ExportObj = $Global:ErrorFiles | Select-Object @{Name='Error';Expression={$_.Split(",")[0]}}, @{Name='Path';Expression={$_.Split(",")[1]}}
+    $ExportObj = $Global:ErrorFiles | Select-Object @{Name = 'Error'; Expression = { $_.Split(",")[0] } }, @{Name = 'Path'; Expression = { $_.Split(",")[1] } }
     $ExportObj | Export-Csv -Notypeinformation -path $ExportError
 }
