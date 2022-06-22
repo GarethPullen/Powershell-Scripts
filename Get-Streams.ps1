@@ -1,8 +1,9 @@
 #Written by Gareth Pullen 15/06/2022 to look for ADS Streams - Main Stream function credited from website.
-#Modified 16-17/06/2022 - to prompt user for folders, handle errors.
-#Modified 20/06/2022 - Fixed exporting errors to CSV, changed to use Write-Verbose and Write-Error
-#Modified 21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys.
+#16-17/06/2022 - to prompt user for folders, handle errors.
+#20/06/2022 - Fixed exporting errors to CSV, changed to use Write-Verbose and Write-Error
+#21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys.
 #21/06/2022 - Also added "-Silent" and "-Help" switches.
+#22/06/2022 - Added a count of total items & progress.
 
 [CmdletBinding()]
 Param(
@@ -14,7 +15,7 @@ If ($Help.IsPresent){
     #Help was called!
     Write-Host "This script asks you for a folder to write CSV Files to - The error and Stream Output files."
     Write-Host 'It calls them "<last-folder>-Errors.csv" and "<last-folder>-Streams.csv"'
-    Write-Host 'It supports the switches "-Help" to show this, "-Silent" to suppress most messages and "-Verbose" to show more messages'
+    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-Verbose" to show more messages and "-Help" to show this'
     Exit
 }
 
@@ -43,6 +44,8 @@ Function Get-Streams {
 Function List-Streams {
     [CmdletBinding()]
     Param([String]$FolderPath)
+    $ItemCount = 0
+    $TotalItemCount = 0
     Try {
         Write-Verbose -Message "Getting files & folders in $FolderPath"
         $Items = Get-ChildItem $FolderPath -Recurse
@@ -54,13 +57,19 @@ Function List-Streams {
         }
         $Global:ErrorFiles.Add("Unable to list path,$FolderPath")
     }
+    $TotalItemCount = $Items.Length
     foreach ($Item in $Items) {
         Try {
+            If (!$Silent.IsPresent) {
+                #Only bother to increment if we're going to use it!
+                $ItemCount++
+                Write-Host "Item $ItemCount out of $TotalItemCount"
+            }
             Write-Verbose -Message "Checking $Item"
             $CurrentPath = Convert-Path -Path $Item.PSPath -ErrorAction Stop
         }
         Catch {
-            If ((!$Silent.IsPresent) -and (!$PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent)) {
+            If (!$Silent.IsPresent) {
                 #Silent switch not called, will write to console. 
                 Write-Error -Message "Unable to find $CurrentPath"
             }
