@@ -1,83 +1,138 @@
-#Script written by Gareth Pullen (grp43) 02/2022
-#Allows for better searching of *all* event logs on a device
+#Written by Gareth Pullen 15/06/2022 to look for ADS Streams - Main Stream function credited from website.
+#16-17/06/2022 - to prompt user for folders, handle errors.
+#20/06/2022 - Fixed exporting errors to CSV, changed to use Write-Verbose and Write-Error
+#21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys.
+#21/06/2022 - Also added "-Silent" and "-Help" switches.
+#22/06/2022 - Added a count of total items & progress.
 
-Function Get-Events {
-    #Call like: Get-Events -Computername <blah> -StartTimestamp "<American Date> <HH:MM>" -Endtimestamp "<American Date> <HH:MM>
-    #e.g. Get-Events -ComputerName rcf35 -StartTimestamp "05/20/2021 15:40" -EndTimestamp "05/20/2021 15:50"
-    param([string]$ComputerName = 'localhost', [datetime]$StartTimestamp, [datetime]$EndTimestamp, $LogSelection)
-    If ($LogSelection) {
-        $Logs = @()
-        foreach ($Log in $LogSelection) {
-            $Logs += $Log.LogName
+[CmdletBinding()]
+Param(
+    [switch] $Silent,
+    [Switch] $Help,
+    [switch] $File
+)
+#Switches to allow for "-Silent" or "-Help" to be called
+If ($Help.IsPresent) {
+    #Help was called!
+    Write-Host "This script asks you for a folder to write CSV Files to - The error and Stream Output files."
+    Write-Host 'It calls them "<last-folder>-Errors.csv" and "<last-folder>-Streams.csv"'
+    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-File" to check a single file, "-Verbose" to show more messages and "-Help" to show this'
+    Exit
+}
+
+#Global Variable to catch Error Files
+$Global:ErrorFiles = New-Object System.Collections.Generic.List[System.Object]
+
+Function Get-Streams {
+    #Taken & modified from https://jdhitsolutions.com/blog/scripting/8888/friday-fun-with-powershell-and-alternate-data-streams/
+    #Modified by Gareth Pullen (grp43) 15/06/2022
+    [CmdletBinding()]
+    Param([string]$Path = "*.*")
+    try {
+        Get-Item -Path $path -stream * | Where-Object { $_.stream -ne ':$DATA' } |
+        Select-Object @{Name = "Path"; Expression = { Split-Path -Path $_.filename } }, @{Name = "File"; Expression = { Split-Path -Leaf $_.filename } },
+        Stream, @{Name = "Size"; Expression = { $_.length } }
+    }
+    Catch { 
+        If (!$Silent.IsPresent) {
+            #Silent switch not called, will write to console.
+            Write-Error -Message "Failed to check Stream $Path"
         }
-    }
-    Else { 
-        $Logs = (Get-WinEvent -ListLog * -ComputerName $ComputerName | where { $_.RecordCount }).LogName
-    }
-    $FilterTable = @{
-        'StartTime' = $StartTimestamp
-        'EndTime'   = $EndTimestamp
-        'LogName'   = $Logs
-    }
-    
-    Get-WinEvent -ComputerName $ComputerName -FilterHashtable $FilterTable -ErrorAction SilentlyContinue
-}
-
-function Test-Administrator {  
-    $user = [Security.Principal.WindowsIdentity]::GetCurrent();
-        (New-Object Security.Principal.WindowsPrincipal $user).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)  
-}
-     
-If (!(Test-Administrator)) {
-    #Not running as admin
-    $Continue = Read-Host "You are not running as Administrator, you will see some errors due to certain event logs being restricted. Continue? [y/n] (default no)"
-    If ($Continue -ne "y") {
-        exit
+        $Global:ErrorFiles.add("Failed to check stream,$Path")
     }
 }
 
-$RemotePC = Read-Host "Enter the PC name - leave blank for 'localhost'"
-If (!$RemotePC) {
-    #Is empty, set to LocalHost
-    $RemotePC = 'localhost'
+Function List-Streams {
+    [CmdletBinding()]
+    Param([String]$FolderPath)
+    $ItemCount = 0
+    $TotalItemCount = 0
+    Try {
+        Write-Verbose -Message "Getting files & folders in $FolderPath"
+        $Items = Get-ChildItem $FolderPath -Recurse
+    }
+    Catch {
+        If (!$Silent.IsPresent) {
+            #Silent switch not called, will write to console. 
+            Write-Error -Message "Failed to list path $FolderPath" 
+        }
+        $Global:ErrorFiles.Add("Unable to list path,$FolderPath")
+    }
+    $TotalItemCount = $Items.Length
+    foreach ($Item in $Items) {
+        Try {
+            If (!$Silent.IsPresent) {
+                #Only bother to increment if we're going to use it!
+                $ItemCount++
+                Write-Host "Item $ItemCount out of $TotalItemCount"
+            }
+            Write-Verbose -Message "Checking $Item"
+            $CurrentPath = Convert-Path -Path $Item.PSPath -ErrorAction Stop
+        }
+        Catch {
+            If (!$Silent.IsPresent) {
+                #Silent switch not called, will write to console. 
+                Write-Error -Message "Unable to find $CurrentPath"
+            }
+            $Global:ErrorFiles.Add("Can't find,$CurrentPath")
+        }
+        Get-Streams $CurrentPath
+    }
 }
 
-$StartDate = Read-Host "Please enter start date in mm/dd/yyyy - leave blank for 'Yesterday'"
-If (!$StartDate) {
-    #Is empty, set to yesterday
-    $StartDate = get-date -date $(get-date).adddays(-1) -format MM/dd/yyyy
-}
+#Main script starts here.
+Write-Host "You can use -Help to show information including other switches"
 
-$StartTime = Read-Host "Please enter a start-time in HH:MM formart - leave blank for current time"
-If (!$StartTime) {
-    #Is empty, set to "now"
-    $StartTime = get-date -format HH:mm
-}
+Do {
+    $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
+    if (!($ExportPath -match '\\$')) {
+        #Check for a trailing "\" and add it if required.
+        $ExportPath = $ExportPath + "\"
+    }
+    If (!(Test-Path $ExportPath)) {
+        Write-Host "Invalid Path"
+    }
+} until (Test-Path $ExportPath)
 
-$EndDate = Read-Host "Please enter the end-date in mm/dd/yyyy - leave blank for 'today'"
-If (!$EndDate) {
-    #Is empty, set to today
-    $EndDate = get-date -Format MM/dd/yyyy
-}
+Do {
+    if ($File.IsPresent) {
+        $CheckPath = Read-Host 'Enter path to file to check'
+    }
+    Else {
+        $CheckPath = Read-Host 'Enter Folder to check Streams in'
+    }
+    $CheckPath = $CheckPath.Trim('"')
+    #Check if "-file" was NOT specified - if not, we need the trailing \
+    if (!($File.IsPresent)) {
+        if (!($CheckPath -match '\\$')) {
+            #Check for a trailing "\" and add it if required.
+            $CheckPath = $CheckPath + "\"
+        }
+    } #If "-file" was specified we skip the above and just test the file is accessible.
+    If (!(Test-Path $CheckPath -ErrorAction SilentlyContinue)) {
+        Write-Host "Invalid Path"
+    }
+} until (Test-Path $CheckPath)
+Write-Verbose -Message "Output and check folders are accessible"
 
-$EndTime = Read-Host "Please enter the end-time - leave blank for current time"
-If (!$EndTime) {
-    #Is empty, set to "now"
-    $EndTime = get-date -Format HH:mm
-}
+$CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
 
-$StartTimeFormatted = $StartDate + " " + $StartTime
-$EndTimeFormatted = $EndDate + " " + $EndTime
+$ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
 
-$SomeLogs = Read-Host "Do you want to search all logs, or choose which to view? ('Y' to choose, 'N' for all logs - default is all)"
-If ($SomeLogs -eq "Y") {
-    #Show a list of all logs with some events in them.
-    $LogSelection = Get-WinEvent -ListLog * | Select-Object LogName, RecordCount, IsEnabled, LogType | Where-Object RecordCount -gt "0" | Out-GridView -PassThru
-    #Call the Get-Events function with the list of selected logs.
-    Get-Events -ComputerName $RemotePC -StartTimestamp $StartTimeFormatted -EndTimestamp $EndTimeFormatted -LogSelection $LogSelection | Out-GridView
+Write-Verbose -Message "Now calling function to check streams in $CheckPath"
+if ($File.IsPresent) {
+    #-File specified - so don't list subfolders, just call the CheckStream
+    Write-Verbose "-File specified, checking single path $CheckPath"
+    Get-Streams $CheckPath | Export-Csv -NoTypeInformation -Path $ExportFull
 }
 Else {
-    #Get events from all logs - call the function without "LogSelection" variable set.
-    Get-Events -ComputerName $RemotePC -StartTimestamp $StartTimeFormatted -EndTimestamp $EndTimeFormatted | Out-GridView
+    #-File not specified, so we check folder & subfiles / folders.
+    Write-Verbose "Checking Files and Folders in $CheckPath"
+    List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
 }
-
+If ($Global:ErrorFiles) {
+    $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
+    Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
+    $ExportObj = $Global:ErrorFiles | Select-Object @{Name = 'Error'; Expression = { $_.Split(",")[0] } }, @{Name = 'Path'; Expression = { $_.Split(",")[1] } }
+    $ExportObj | Export-Csv -Notypeinformation -path $ExportError
+}
