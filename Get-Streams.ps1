@@ -8,14 +8,15 @@
 [CmdletBinding()]
 Param(
     [switch] $Silent,
-    [Switch] $Help
+    [Switch] $Help,
+    [switch] $File
 )
 #Switches to allow for "-Silent" or "-Help" to be called
-If ($Help.IsPresent){
+If ($Help.IsPresent) {
     #Help was called!
     Write-Host "This script asks you for a folder to write CSV Files to - The error and Stream Output files."
     Write-Host 'It calls them "<last-folder>-Errors.csv" and "<last-folder>-Streams.csv"'
-    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-Verbose" to show more messages and "-Help" to show this'
+    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-File" to check a single file, "-Verbose" to show more messages and "-Help" to show this'
     Exit
 }
 
@@ -92,16 +93,25 @@ Do {
         Write-Host "Invalid Path"
     }
 } until (Test-Path $ExportPath)
+
 Do {
-    $CheckPath = Read-Host 'Enter Folder to check Streams in'
+    if ($File.IsPresent) {
+        $CheckPath = Read-Host 'Enter path to file to check'
+    }
+    Else {
+        $CheckPath = Read-Host 'Enter Folder to check Streams in'
+    }
     $CheckPath = $CheckPath.Trim('"')
-    if (!($CheckPath -match '\\$')) {
-        #Check for a trailing "\" and add it if required.
-        $CheckPath = $CheckPath + "\"
-    }
-    If (!(Test-Path $CheckPath -ErrorAction SilentlyContinue)) {
-        Write-Host "Invalid Path"
-    }
+    #Check if "-file" was NOT specified - if not, we need the trailing \
+    if (!($File.IsPresent)) {
+        if (!($CheckPath -match '\\$')) {
+            #Check for a trailing "\" and add it if required.
+            $CheckPath = $CheckPath + "\"
+        }
+        If (!(Test-Path $CheckPath -ErrorAction SilentlyContinue)) {
+            Write-Host "Invalid Path"
+        }
+    } #If "-file" was specified we skip the above and just test the file is accessible.
 } until (Test-Path $CheckPath)
 Write-Verbose -Message "Output and check folders are accessible"
 
@@ -110,8 +120,15 @@ $CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
 $ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
 
 Write-Verbose -Message "Now calling function to check streams in $CheckPath"
-List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
-
+if ($File.IsPresent) {
+    #-File specified - so don't list subfolders, just call the CheckStream
+    Write-Verbose "-File specified, checking single path $CheckPath"
+    Get-Streams $CheckPath | Export-Csv -NoTypeInformation -Path $ExportFull
+}
+Else { #-File not specified, so we check folder & subfiles / folders.
+    Write-Verbose "Checking Files and Folders in $CheckPath"
+    List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
+}
 If ($Global:ErrorFiles) {
     $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
     Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
