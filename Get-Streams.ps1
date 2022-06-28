@@ -4,19 +4,20 @@
 #21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys.
 #21/06/2022 - Also added "-Silent" and "-Help" switches.
 #22/06/2022 - Added a count of total items & progress.
+#28/06/2022 - Re-factored to allow "-file" switch to take a string on the command-line
 
 [CmdletBinding()]
 Param(
     [switch] $Silent,
     [Switch] $Help,
-    [switch] $File
+    [Parameter(Mandatory=$false)][string] $File
 )
 #Switches to allow for "-Silent" or "-Help" to be called
 If ($Help.IsPresent) {
     #Help was called!
     Write-Host "This script asks you for a folder to write CSV Files to - The error and Stream Output files."
     Write-Host 'It calls them "<last-folder>-Errors.csv" and "<last-folder>-Streams.csv"'
-    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-File" to check a single file, "-Verbose" to show more messages and "-Help" to show this'
+    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-File" to check a single file - specified when calling the script, "-Verbose" to show more messages and "-Help" to show this'
     Exit
 }
 
@@ -82,7 +83,7 @@ Function List-Streams {
 
 #Main script starts here.
 Write-Host "You can use -Help to show information including other switches"
-
+if (!($PSBoundParameters.ContainsKey('File'))) { #If -File is specified we don't output to CSV
 Do {
     $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
     if (!($ExportPath -match '\\$')) {
@@ -92,8 +93,7 @@ Do {
     If (!(Test-Path $ExportPath)) {
         Write-Host "Invalid Path"
     }
-} until (Test-Path $ExportPath)
-
+} until (Test-Path $ExportPath) 
 Do {
     if ($File.IsPresent) {
         $CheckPath = Read-Host 'Enter path to file to check'
@@ -102,36 +102,37 @@ Do {
         $CheckPath = Read-Host 'Enter Folder to check Streams in'
     }
     $CheckPath = $CheckPath.Trim('"')
-    #Check if "-file" was NOT specified - if not, we need the trailing \
-    if (!($File.IsPresent)) {
         if (!($CheckPath -match '\\$')) {
             #Check for a trailing "\" and add it if required.
             $CheckPath = $CheckPath + "\"
         }
-        If (!(Test-Path $CheckPath -ErrorAction SilentlyContinue)) {
-            Write-Host "Invalid Path"
-        }
-    } #If "-file" was specified we skip the above and just test the file is accessible.
 } until (Test-Path $CheckPath)
 Write-Verbose -Message "Output and check folders are accessible"
-
 $CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
 
 $ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
-
-Write-Verbose -Message "Now calling function to check streams in $CheckPath"
-if ($File.IsPresent) {
-    #-File specified - so don't list subfolders, just call the CheckStream
-    Write-Verbose "-File specified, checking single path $CheckPath"
-    Get-Streams $CheckPath | Export-Csv -NoTypeInformation -Path $ExportFull
+} Else {
+    #-File was specified, check it's accessible:
+    If (!(Test-Path $File -ErrorAction SilentlyContinue)) {
+        Write-Host "Invalid Path"
+        Exit
+    }
 }
-Else { #-File not specified, so we check folder & subfiles / folders.
+
+if ($PSBoundParameters.ContainsKey('File')) {
+    #-File specified - so don't list subfolders, just call the CheckStream
+    Write-Verbose "-File specified, checking single path $File"
+    Get-Streams $File
+}
+Else {
+    Write-Verbose -Message "Now calling function to check streams in $CheckPath"
+    #-File not specified, so we check folder & subfiles / folders.
     Write-Verbose "Checking Files and Folders in $CheckPath"
     List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
-}
-If ($Global:ErrorFiles) {
-    $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
-    Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
-    $ExportObj = $Global:ErrorFiles | Select-Object @{Name = 'Error'; Expression = { $_.Split(",")[0] } }, @{Name = 'Path'; Expression = { $_.Split(",")[1] } }
-    $ExportObj | Export-Csv -Notypeinformation -path $ExportError
+    If ($Global:ErrorFiles) {
+        $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
+        Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
+        $ExportObj = $Global:ErrorFiles | Select-Object @{Name = 'Error'; Expression = { $_.Split(",")[0] } }, @{Name = 'Path'; Expression = { $_.Split(",")[1] } }
+        $ExportObj | Export-Csv -Notypeinformation -path $ExportError
+    }
 }
