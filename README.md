@@ -8,8 +8,7 @@ This script adds two AzureAD Groups to the local "Administrators" group on devic
 This script is quite simple, it checks if it can ping the print-server, and if so will then run through the Array of printers defined at the top of the script to add them to the device. Uses a "Try / Catch" to add each printer, so in the event of a problem adding one it doesn't end the entire script but instead skips it and moves onto the next printer in the list.
 
 # Get-Streams.ps1
-This script prompts the user for a folder to save CSV files to, and a folder to scan. It then scans the folder (and all subfolders) for any "Alternate Data Streams" (ADS in NTFS file-systems) and outputs the contents of the ADS to a CSV file. It also outputs any errors encountered when scanning the file-system to a different CSV file.
-Takes the last-folder of the "path to scan" as the output name for the CSV files.
+This Script is designed to check for Alternate Data Streams (ADS) in NTFS file-systems. If used with the "-file" switch it accepts a path to a file when running the script, and checks that single file for any ADS. Otherwise it prompts the user for a folder to save CSV files to, and a folder to scan. It then scans the folder (and all subfolders) for any "Alternate Data Streams" and outputs the contents of the ADS to a CSV file. It also outputs any errors encountered when scanning the file-system to a different CSV file. Takes the last-folder of the "path to scan" as the output name for the CSV files.
 
 # Get-Events.ps1
 This script prompts the user for a computer-name (defaults to Local Host) and a time-range (defaults to "the last 24 hours"), it then asks if the user wants to select which event logs to display, or show all events. Extremely useful for identifying errors when you know the approximate time, as Windows has a lot more Event Logs than the standard "Application", "System" and "Security".
