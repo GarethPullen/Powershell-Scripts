@@ -114,7 +114,7 @@ $CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
 #Avoid the 260-character limit
 if ($CheckPath.Substring(0,2) -eq "\\"){
     #Has leading "\\"
-    $CheckPath = $CheckPath -replace '^\\\\', '\\?\'
+    $CheckPath = $CheckPath -replace '^\\\\', '\\?\UNC\'
 } Else {
     #No leading "\\" - so just add the \\?\
     $CheckPath = '\\?\' + $CheckPath
