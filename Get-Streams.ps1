@@ -5,6 +5,7 @@
 #21/06/2022 - Also added "-Silent" and "-Help" switches.
 #22/06/2022 - Added a count of total items & progress.
 #28/06/2022 - Re-factored to allow "-file" switch to take a string on the command-line
+#22/08/2022 - Modified to use "\\?\" to allow > 260 character paths
 
 [CmdletBinding()]
 Param(
@@ -50,7 +51,7 @@ Function List-Streams {
     $TotalItemCount = 0
     Try {
         Write-Verbose -Message "Getting files & folders in $FolderPath"
-        $Items = Get-ChildItem $FolderPath -Recurse
+        $Items = Get-ChildItem -LiteralPath $FolderPath -Recurse
     }
     Catch {
         If (!$Silent.IsPresent) {
@@ -109,6 +110,15 @@ Do {
 } until (Test-Path $CheckPath)
 Write-Verbose -Message "Output and check folders are accessible"
 $CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
+
+#Avoid the 260-character limit
+if ($CheckPath.Substring(0,2) -eq "\\"){
+    #Has leading "\\"
+    $CheckPath = $CheckPath -replace '^\\\\', '\\?\'
+} Else {
+    #No leading "\\" - so just add the \\?\
+    $CheckPath = '\\?\' + $CheckPath
+}
 
 $ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
 } Else {
