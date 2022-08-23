@@ -4,19 +4,22 @@
 #21/06/2022 - Changed to use a List for errors to avoid issues with duplicate keys.
 #21/06/2022 - Also added "-Silent" and "-Help" switches.
 #22/06/2022 - Added a count of total items & progress.
+#28/06/2022 - Re-factored to allow "-file" switch to take a string on the command-line
+#22/08/2022 - Modified to use "\\?\" to allow > 260 character paths
 
 [CmdletBinding()]
 Param(
     [switch] $Silent,
     [Switch] $Help,
-    [switch] $File
+    [Switch] $Log,
+    [Parameter(Mandatory = $false)][string] $File
 )
 #Switches to allow for "-Silent" or "-Help" to be called
 If ($Help.IsPresent) {
     #Help was called!
     Write-Host "This script asks you for a folder to write CSV Files to - The error and Stream Output files."
     Write-Host 'It calls them "<last-folder>-Errors.csv" and "<last-folder>-Streams.csv"'
-    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-File" to check a single file, "-Verbose" to show more messages and "-Help" to show this'
+    Write-Host 'It supports the switches "-Silent" to suppress most messages, "-File" to check a single file - specified when calling the script, "-Verbose" to show more messages, "-Log" to log more detail to a file, and "-Help" to show this'
     Exit
 }
 
@@ -29,6 +32,7 @@ Function Get-Streams {
     [CmdletBinding()]
     Param([string]$Path = "*.*")
     try {
+        Write-Verbose -Message "Checking $path"
         Get-Item -Path $path -stream * | Where-Object { $_.stream -ne ':$DATA' } |
         Select-Object @{Name = "Path"; Expression = { Split-Path -Path $_.filename } }, @{Name = "File"; Expression = { Split-Path -Leaf $_.filename } },
         Stream, @{Name = "Size"; Expression = { $_.length } }
@@ -38,6 +42,7 @@ Function Get-Streams {
             #Silent switch not called, will write to console.
             Write-Error -Message "Failed to check Stream $Path"
         }
+        Write-Verbose -Message "Error checking $Path"
         $Global:ErrorFiles.add("Failed to check stream,$Path")
     }
 }
@@ -49,16 +54,18 @@ Function List-Streams {
     $TotalItemCount = 0
     Try {
         Write-Verbose -Message "Getting files & folders in $FolderPath"
-        $Items = Get-ChildItem $FolderPath -Recurse
+        $Items = Get-ChildItem -LiteralPath $FolderPath -Recurse
     }
     Catch {
         If (!$Silent.IsPresent) {
             #Silent switch not called, will write to console. 
             Write-Error -Message "Failed to list path $FolderPath" 
         }
+        Write-Verbose -Message "Error listing $FolderPath"
         $Global:ErrorFiles.Add("Unable to list path,$FolderPath")
     }
     $TotalItemCount = $Items.Length
+    Write-Verbose -Message "Total number of items to check: $TotalItemCount"
     foreach ($Item in $Items) {
         Try {
             If (!$Silent.IsPresent) {
@@ -74,65 +81,82 @@ Function List-Streams {
                 #Silent switch not called, will write to console. 
                 Write-Error -Message "Unable to find $CurrentPath"
             }
+            Write-Verbose -Message "Error getting path of $CurrentPath"
             $Global:ErrorFiles.Add("Can't find,$CurrentPath")
         }
+        Write-Verbose -Message "Calling Get-Streams on $CurrentPath"
         Get-Streams $CurrentPath
     }
 }
 
 #Main script starts here.
 Write-Host "You can use -Help to show information including other switches"
-
-Do {
-    $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
-    if (!($ExportPath -match '\\$')) {
-        #Check for a trailing "\" and add it if required.
-        $ExportPath = $ExportPath + "\"
-    }
-    If (!(Test-Path $ExportPath)) {
-        Write-Host "Invalid Path"
-    }
-} until (Test-Path $ExportPath)
-
-Do {
-    if ($File.IsPresent) {
-        $CheckPath = Read-Host 'Enter path to file to check'
-    }
-    Else {
-        $CheckPath = Read-Host 'Enter Folder to check Streams in'
-    }
-    $CheckPath = $CheckPath.Trim('"')
-    #Check if "-file" was NOT specified - if not, we need the trailing \
-    if (!($File.IsPresent)) {
+if (!($PSBoundParameters.ContainsKey('File'))) {
+    #If -File is specified we don't output to CSV
+    Do {
+        $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
+        if (!($ExportPath -match '\\$')) {
+            #Check for a trailing "\" and add it if required.
+            $ExportPath = $ExportPath + "\"
+        }
+        If (!(Test-Path $ExportPath)) {
+            Write-Host "Invalid Path"
+        }
+        Write-verbose -Message "Checking if $ExportPath is accessible"
+    } until (Test-Path $ExportPath) 
+    Do {
+        if ($File.IsPresent) {
+            $CheckPath = Read-Host 'Enter path to file to check'
+        }
+        Else {
+            $CheckPath = Read-Host 'Enter Folder to check Streams in'
+        }
+        $CheckPath = $CheckPath.Trim('"')
         if (!($CheckPath -match '\\$')) {
             #Check for a trailing "\" and add it if required.
             $CheckPath = $CheckPath + "\"
         }
-    } #If "-file" was specified we skip the above and just test the file is accessible.
-    If (!(Test-Path $CheckPath -ErrorAction SilentlyContinue)) {
-        Write-Host "Invalid Path"
+        Write-Verbose -Message "Checking if $CheckPath is acessible"
+    } until (Test-Path $CheckPath)
+    Write-Verbose -Message "Output and check folders are accessible"
+    $CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
+
+    #Avoid the 260-character limit
+    if ($CheckPath.Substring(0, 2) -eq "\\") {
+        #Has leading "\\"
+        $CheckPath = $CheckPath -replace '^\\\\', '\\?\UNC\'
+        Write-Verbose -Message "Changing UNC to Unicode UNC"
     }
-} until (Test-Path $CheckPath)
-Write-Verbose -Message "Output and check folders are accessible"
+    Else {
+        #No leading "\\" - so just add the \\?\
+        $CheckPath = '\\?\' + $CheckPath
+        Write-Verbose -Message "Changing path to unicode type"
+    }
 
-$CheckPathSplit = (Split-Path -Path $CheckPath -Leaf)
-
-$ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
-
-Write-Verbose -Message "Now calling function to check streams in $CheckPath"
-if ($File.IsPresent) {
-    #-File specified - so don't list subfolders, just call the CheckStream
-    Write-Verbose "-File specified, checking single path $CheckPath"
-    Get-Streams $CheckPath | Export-Csv -NoTypeInformation -Path $ExportFull
+    $ExportFull = $ExportPath + $CheckPathSplit + "-Streams.csv"
 }
 Else {
+    #-File was specified, check it's accessible:
+    If (!(Test-Path $File -ErrorAction SilentlyContinue)) {
+        Write-Host "Invalid Path"
+        Exit
+    }
+}
+
+if ($PSBoundParameters.ContainsKey('File')) {
+    #-File specified - so don't list subfolders, just call the CheckStream
+    Write-Verbose "-File specified, checking single path $File"
+    Get-Streams $File
+}
+Else {
+    Write-Verbose -Message "Now calling function to check streams in $CheckPath"
     #-File not specified, so we check folder & subfiles / folders.
     Write-Verbose "Checking Files and Folders in $CheckPath"
     List-Streams "$CheckPath" | Export-Csv -NoTypeInformation -Path $ExportFull
-}
-If ($Global:ErrorFiles) {
-    $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
-    Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
-    $ExportObj = $Global:ErrorFiles | Select-Object @{Name = 'Error'; Expression = { $_.Split(",")[0] } }, @{Name = 'Path'; Expression = { $_.Split(",")[1] } }
-    $ExportObj | Export-Csv -Notypeinformation -path $ExportError
+    If ($Global:ErrorFiles) {
+        $ExportError = $ExportPath + $CheckPathSplit + "-Errors.csv"
+        Write-Verbose -Message "Errors found during ADS testing, writing to log file $ExportError"
+        $ExportObj = $Global:ErrorFiles | Select-Object @{Name = 'Error'; Expression = { $_.Split(",")[0] } }, @{Name = 'Path'; Expression = { $_.Split(",")[1] } }
+        $ExportObj | Export-Csv -Notypeinformation -path $ExportError
+    }
 }
