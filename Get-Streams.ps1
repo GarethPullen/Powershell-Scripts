@@ -8,6 +8,7 @@ Written by Gareth Pullen 15/06/2022 to look for ADS Streams - Main Stream functi
 28/06/2022 - Re-factored to allow "-file" switch to take a string on the command-line
 22/08/2022 - Modified to use "\\?\" to allow > 260 character paths
 23/08/2022 - Resolved a bug relating to file-names with []'s in.
+04/10/2022 - Resolved bug relating to running with a path specified but no -file switch causing unexpected behaviour
 #>
 
 [CmdletBinding()]
@@ -15,7 +16,7 @@ Param(
     [switch] $Silent,
     [Switch] $Help,
     [Switch] $Log,
-    [Parameter(Mandatory = $false)][string] $File
+    [Parameter(ParameterSetName='by file')][string] $File
 )
 #Switches to allow for "-Silent" or "-Help" to be called
 If ($Help.IsPresent) {
