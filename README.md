@@ -44,3 +44,6 @@ This script queries Azure Update Compliance and writes to a CSV file: Device Nam
 # Intune-devices-no-user.ps1
 This script takes a "Device Configuration ID" (found on the Intune portal) and then queries using the Graph API for all devices with that configuration profile applied. Checks if the user account associated with the property is "System Account" or a "Test account" - if those are the only accounts associated with it, then we assume no user has signed in, as it should be associated with a "normal" Users' UPN.
 Can either save it to a CSV file, or display in a window using Powershell's "Out-GridView" function.
+
+#IP-DNS-Lookup.ps1
+This script takes a CSV file of IP address as the input, then loops through the list doing a DNS lookup for each one which is then added to a Hashtable for export. If there is no DNS entry it throws and catches an error, and adds "Error - not found" as the hostname. Outputs to a new CSV file with the key-value pairs of "IP" and "Hostname"
