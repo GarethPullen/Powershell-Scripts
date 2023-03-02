@@ -1,6 +1,9 @@
 # Powershell-Scripts
 A collection of useful PowerShell Scripts I've created.
 
+# BulkGroupAdd.ps1
+This script asks the user for a CSV file of device names (or Dell Service Tags if they have been pre-uploaded by Dell) and will then add them to the group specified by the "$GroupID" variable (Group Object ID of an AzureAD group). It will handle quotes around the file-path and re-prompt if the file doesn't exist. It will skip over any devices that can't be found in AzureAD, and will post a message to the terminal for any which are already in the group, before moving onto the next item.
+
 # Add-Admin-Groups.ps1
 This script adds two AzureAD Groups to the local "Administrators" group on devices. It first checks if the groups exist, to avoid getting into an "Error" state when deployed via the Endpoint Console > Scripts section.
 
