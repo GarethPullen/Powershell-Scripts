@@ -44,8 +44,11 @@ Catch {
 $DevicesTags = Import-Csv -Path $CSVImportFile -Header 'Tag'
 
 $DeviceIDS = @{}
+$Counter = 1
 
 foreach ($ServiceTag in $DevicesTags){
+    Write-Progress -Activity "Converting CSV items to Azure Object IDs" -status "Checking ID for $ServiceTag" -PercentComplete ($Counter / $DevicesTags.Count * 100)
+    $Counter++
     try {
         $ID = Get-AzureADDevice -SearchString $ServiceTag.Tag -ErrorAction stop
         if ($ID -ne $null) {
@@ -64,13 +67,17 @@ foreach ($ServiceTag in $DevicesTags){
     }
 }
 
+#Reset the Counter
+$Counter = 1
 Foreach ($DevID in $DeviceIDS.GetEnumerator()){
+    $Name = $DevID.Name
+    Write-Progress -Activity "Adding items to group" -status "Adding $Name" -PercentComplete ($Counter / $DeviceIDS.Count * 100)
+    $Counter++
     try {
         $AddID = $DevID.Value
         Add-AzureADGroupMember -ObjectId $GroupID -RefObjectId $AddID -ErrorAction Stop
     }
     catch {
-        $Name = $DevID.Name
         Write-Output "ERROR: Failed to add Device: $Name"
     }
 }
