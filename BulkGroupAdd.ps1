@@ -3,6 +3,9 @@ Takes CSV file as input, adds devices to the "self-deployment group"
 Written by Gareth Pullen 02/03/2023
 #>
 
+[CmdletBinding()]
+Param()
+
 # Group ObjectID to import to:
 $GroupID = "<Enter Group ID from Azure here>"
 
@@ -15,12 +18,13 @@ Do {
     $CSVImportFile = Read-Host "Please enter the path to the CSV file"
     $CSVImportFile = $CSVImportFile.replace('"','')}
 Until (Test-Path -Path $CSVImportFile -PathType Leaf)}
-
+Write-Verbose "Checking for AzureAD"
 #Check if AzureAD Module is installed, install it if not.
 try {
     get-installedmodule -name azuread -ErrorAction Stop | out-null
 }
 Catch {
+    Write-Verbose "AzureAD Not installed, installing..."
     If ((get-psrepository -Name 'PSGallery').Trusted) {
         install-module -name AzureAD
     } Else {    
@@ -32,6 +36,7 @@ Catch {
 
 #Connect to AzureAD (will prompt for login) - for adding to the group
 Try {
+    Write-Verbose "Connecting to AzureAD"
         Connect-AzureAD -EA Stop | out-null
 }
 Catch {
@@ -39,13 +44,14 @@ Catch {
     Write-Output $_
     Exit
 }
-
+Write-Verbose "Reading CSV file"
 # Read in the CSV file
 $DevicesTags = Import-Csv -Path $CSVImportFile -Header 'Tag'
 
 $DeviceIDS = @{}
 $Counter = 1
 
+Write-Verbose "Converting Service Tags to Azure Object IDs"
 foreach ($ServiceTag in $DevicesTags){
     Write-Progress -Activity "Converting CSV items to Azure Object IDs" -status "Checking ID for $ServiceTag" -PercentComplete ($Counter / $DevicesTags.Count * 100)
     $Counter++
@@ -69,6 +75,7 @@ foreach ($ServiceTag in $DevicesTags){
 
 #Reset the Counter
 $Counter = 1
+Write-Verbose "Adding devices to the group"
 Foreach ($DevID in $DeviceIDS.GetEnumerator()){
     $Name = $DevID.Name
     Write-Progress -Activity "Adding items to group" -status "Adding $Name" -PercentComplete ($Counter / $DeviceIDS.Count * 100)
