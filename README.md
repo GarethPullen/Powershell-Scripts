@@ -50,3 +50,10 @@ Can either save it to a CSV file, or display in a window using Powershell's "Out
 
 # IP-DNS-Lookup.ps1
 This script takes a CSV file of IP address as the input, then loops through the list doing a DNS lookup for each one which is then added to a Hashtable for export. If there is no DNS entry it throws and catches an error, and adds "Error - not found" as the hostname. Outputs to a new CSV file with the key-value pairs of "IP" and "Hostname"
+
+# Module-Check-Install.ps1
+This script is really just a single function - saved as a script for ease of use. It takes either one string or an array of strings of module-names as input, and then will check if they are already installed - if not it wil try and install them from PSGallery - and then will try to import them.
+Call it like:
+ModuleCheckInstall "ModuleName"
+Or for multiple modules:
+ModuleCheckInstall "FirstModule", "SecondModule", "AndSoOn"
