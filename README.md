@@ -57,3 +57,6 @@ Call it like:
 ModuleCheckInstall "ModuleName"
 Or for multiple modules:
 ModuleCheckInstall "FirstModule", "SecondModule", "AndSoOn"
+
+# Intune-device-rebuild.ps1
+This script is designed to prompt the user to select a device from Intune, and will then delete the Intune Device record, the Autopilot record and the AzureAD Device record - to allow for easier rebuilding of devices (e.g. after a motherboard change).
