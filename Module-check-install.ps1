@@ -16,6 +16,17 @@ function ModuleCheckInstall {
             $ResetTrust = $true
         }
         else { $ResetTrust = $false }
+        #Check if we're running in Elevated mode - adjust Scope accordingly.
+        Write-Verbose "Checking if we're elevated or not"
+        $Elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        If ($Elevated) {
+            Write-Verbose "We are elevated, setting scope to AllUsers"
+            $InstallScope = "AllUsers"
+        }
+        Else {
+            Write-Verbose "Not elevated, set scope to CurrentUser"
+            $InstallScope = "CurrentUser"
+        }
     }
     Process {
         Foreach ($Module in $ModulesRequested) {
@@ -28,7 +39,7 @@ function ModuleCheckInstall {
                 Write-Verbose "$Module not found, attempting install"
                 #Error means not found - Try installing it
                 try {
-                    install-module -name $Module -ErrorAction Stop
+                    install-module -name $Module -Scope $InstallScope -ErrorAction Stop
                 }
                 Catch {
                     Write-Verbose "$Module returned an error trying to install!"
@@ -43,7 +54,7 @@ function ModuleCheckInstall {
             Try {
                 #By this point the module should be installed, so we can Import it.
                 Write-Verbose "Attempting to import $Module"
-                Import-Module $Module -ErrorAction Stop
+                Import-Module $Module -Global -ErrorAction Stop
             }
             Catch {
                 #Catch any errors importing and throw it back.
