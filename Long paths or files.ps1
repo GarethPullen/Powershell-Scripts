@@ -1,6 +1,7 @@
 <#  Script to list files & folders which are longer than a user-entered length
     Will also list any which are over 260 characters long (combined file & folder path length)
     Written 24/05/2023 by Gareth Pullen (grp43)
+    Updated 25/05/2023 to have additional "Write-Verbose" for troubleshooting
 #>
 
 [CmdletBinding()]
@@ -21,6 +22,7 @@ If ($Help.IsPresent) {
 #Main script starts here.
 Write-Host "You can use -Help to show information including other switches"
 if (!($PSBoundParameters.ContainsKey('display'))) {
+    Write-Verbose "Display switch not used, asking for output location"
     #If -dispaly is specified we don't output to CSV, so don't need an output path
     #Ask for the output path
     Do {
@@ -62,6 +64,7 @@ Else {
 #Ask for the folder length to look for - default to 200 otherwise
 $AskUserLength = $null
 $AskUserLength = Read-Host 'Enter a maximum folder length to check (defaults to 200 if nothing is entered)'
+Write-Verbose "Checking if a length has been specified"
 If ($AskUserLength -gt 1) {
     $FolderLength = $AskUserLength
 }
@@ -70,6 +73,7 @@ Else {
 }
 $AskUserFileLength = $null
 $AskUserfileLength = Read-Host 'And for maximum file-length? (defaults to 100 if nothing is entered)'
+Write-Verbose "Checking if a length has been specified"
 If ($AskUserFileLength -gt 1) {
     $FileLength = $AskUserFileLength
 }
@@ -78,10 +82,12 @@ Else {
 }
 
 # Enumerate the subfolders
+Write-Verbose "Getting list of directories"
 $FolderList = Get-ChildItem -Path $CheckPath -Directory -Recurse
 #check the length of the folders
 $LongFolders = New-Object System.Collections.Generic.List[System.Object]
 $CSVWritten = New-Object System.Collections.Generic.List[System.Object]
+Write-Verbose "Will now loop through list of folders checking the length"
 Foreach ($Folder in $FolderList) {
     #-4 to account for the extra "\\?\" we added.
     if ((($Folder.FullName).Length - 4) -gt $FolderLength) {
@@ -89,6 +95,7 @@ Foreach ($Folder in $FolderList) {
     }
 }
 If ($LongFolders.Count -gt 0) {
+    Write-Verbose "Folders longer than $FolderLength found - either displaying or writing them out"
     #There's something in the list!
     if ($PSBoundParameters.ContainsKey('display')) {
         #We only want to display the results
@@ -101,12 +108,14 @@ If ($LongFolders.Count -gt 0) {
     Else {
         #Display was not set, so output to CSV.
         $ExportFolderPath = $ExportPath + "Long-Folders.csv"
+        Write-Verbose "Attempting to write list of long-folders to $ExportFolderPath"
         $LongFolders | Select FullName | Export-Csv -NoTypeInformation -Path $ExportFolderPath 
         $CSVWritten.Add($ExportFolderPath)
     }
 }
 
 # Enumerate the subfiles
+Write-Verbose "Getting list of files"
 $FileList = Get-ChildItem -Path $CheckPath -Recurse
 
 #Create List objects for the file lists
@@ -114,6 +123,7 @@ $LongFiles = New-Object System.Collections.Generic.List[System.Object]
 $LongTotalPath = New-Object System.Collections.Generic.List[System.Object]
 
 #check the length of the files
+Write-Verbose "About to loop through file-list for those over $FileLength or 260"
 Foreach ($File in $FileList) {
     if (($File.Name).Length -gt $FileLength) {
         $LongFiles.Add($File)
@@ -124,6 +134,7 @@ Foreach ($File in $FileList) {
     }
 }
 If ($LongFiles.Count -gt 0) {
+    Write-Verbose "Files longer than $FileLength found, writing out to file or display"
     #There's something in the list!
     if ($PSBoundParameters.ContainsKey('display')) {
         #We only want to display the results
@@ -136,11 +147,13 @@ If ($LongFiles.Count -gt 0) {
     Else {
         #Display was not set, so output to CSV.
         $ExportFilesPath = $ExportPath + "Long-Files.csv"
+        Write-Verbose "Attempting to write CSV to $ExportFilesPath"
         $LongFiles | Select DirectoryName, Name | Export-Csv -NoTypeInformation -Path $ExportFilesPath
         $CSVWritten.Add($ExportFilesPath)
     } 
 }
 If ($LongTotalPath.Count -gt 0) {
+    Write-Verbose "Found items where file+path is over 260 characters, listing them too"
     #We found file+path where it was 260 or more! Log them too.
     if ($PSBoundParameters.ContainsKey('display')) {
         #We only want to display the results
@@ -152,6 +165,7 @@ If ($LongTotalPath.Count -gt 0) {
     else {
         #Display was not set, so output to CSV.
         $ExportLongItemPath = $ExportPath + "Long-Total-Path.csv"
+        Write-Verbose "Attempting to write these to $ExportLongItemPath"
         $LongTotalPath | Select DirectoryName, Name | Export-Csv -NoTypeInformation -Path $ExportLongItemPath
         $CSVWritten.Add($ExportLongItemPath)
     }
