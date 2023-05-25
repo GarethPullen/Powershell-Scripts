@@ -60,3 +60,6 @@ ModuleCheckInstall "FirstModule", "SecondModule", "AndSoOn"
 
 # Intune-device-rebuild.ps1
 This script is designed to prompt the user to select a device from Intune, and will then delete the Intune Device record, the Autopilot record and the AzureAD Device record - to allow for easier rebuilding of devices (e.g. after a motherboard change).
+
+# Long files or paths.ps1
+This script will list all files and/or folders longer than either a default length (100/200) or a user-specified length. It will also list all files where the total "file-path & length" is over 260 characters (which is the normal "Windows maximum path limit"). It will then output them to CSV files (or display to the console if the "-display" switch is used), and notify of which files have been written.
