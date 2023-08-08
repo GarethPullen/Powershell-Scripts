@@ -19,6 +19,12 @@
     Useful for identifying files or folders which exceed the total-path length for Windows.
     Even with Exclude used, the folders will intially be "hit" by the first folder-listing - so some errors may show for them.
 
+    .INPUTS
+    User-prompted for Inputs. Does not accept pipeline input.
+
+    .OUTPUTS
+    Unless -display is used, will output up to 3 CSV files with long files, long full-folder-paths, or long single-folder-names. Will output to the console where the files are located.
+
     .EXAMPLE
     ./"Long Paths or files.ps1" 
     You will then be prompted for the location to save the output CSVs, the folder to scan, and the maximum length
