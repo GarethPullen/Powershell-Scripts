@@ -4,15 +4,42 @@
     Updated 25/05/2023 to have additional "Write-Verbose" for troubleshooting
     Updated 07/06/2023 to truncate file & folder names
     Updated 02/08/2023 to comment out the auto-truncate
-    Updated 07/08/2023 to improve the Verbose output & handling of access-denied errors. Moved logic for truncate to the end & added a Switch for it.
+    Updated 07/08/2023 to improve the Verbose output & handling of access-denied errors
+    Updated 08/08/2023 to allow Excluding folders
 #>
+
+<#
+    .SYNOPSIS
+    Output a listing of all files & folders with long names or paths.
+
+    .DESCRIPTION
+    The Long paths of files.ps1 script outputs - either to CSV files or to the console
+    Folders with long total-paths, long single-folder names, or long file-names
+    Useful for identifying files or folders which exceed the total-path length for Windows.
+    Even with Exclude used, the folders will intially be "hit" by the first folder-listing - so some errors may show for them.
+
+
+
+#>
+
 
 [CmdletBinding()]
 Param(
-    [switch] $Silent,
-    [Switch] $Help,
-    [switch] $truncate,
-    [Switch] $display
+    [switch] 
+    # Suppress most messages
+    $Silent,
+    [Switch] 
+    # Display Help Message
+    $Help,
+    [switch] 
+    # Enable auto-truncation
+    $truncate,
+    [Switch] 
+    # Display results rather than writing to CSV
+    $display,
+    [string[]] 
+    # Folders to exclude for file-scanning
+    $exclude
 )
 #Switches to allow for "-Silent" or "-Help" to be called
 If ($Help.IsPresent) {
@@ -22,11 +49,33 @@ If ($Help.IsPresent) {
     Write-Host 'It will call them "long-paths.csv" "long-files.csv" and "Long-Combined-Length.csv"'
     Write-Host 'If called with the "-display" switch it will not write to CSV and will instead just write to the console'
     Write-Host 'It supports the switches "-Silent" to suppress most messages, "-Verbose" to show more messages, "-display" to only output to the console, and "-Help" to show this'
+    Write-Host 'You can use the "-exclude" parameter to exclude folders for the file checking. Must be enclosed in quotes, and with a comma-separating them. They will still be "found" during the initial folder-listing'
+    Write-Host 'So expect some errors if using Verbose, even with Exclude listed. They will not be scanned for subfiles & folders however.'
     Exit
 }
 
 #Main script starts here.
+
 Write-Host "You can use -Help to show information including other switches"
+
+if ($PSBoundParameters.ContainsKey('exclude')) {
+    #Exclude is used...
+    $ExcludeList = New-Object System.Collections.Generic.List[System.Object]
+    Foreach ($Item in $exclude) {
+
+        If (!($Item -match '\\$')) {
+            #Doesn't end with \ - add the item and it with a "\" added
+            $ExcludeList.Add($Item)
+            $ExcludeList.Add($Item + "\")
+        }
+        Else {
+            #Does end with \ - add it, and one with the last character removed
+            $ExcludeList.Add($Item)
+            $ExcludeList.Add($Item -replace ".$")
+        }
+    }
+}
+
 if (!($PSBoundParameters.ContainsKey('display'))) {
     Write-Verbose "Display switch not used, asking for output location"
     #If -dispaly is specified we don't output to CSV, so don't need an output path
@@ -102,9 +151,9 @@ Write-Verbose "Getting list of directories"
 if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
     $Errors = New-Object System.Collections.Generic.List[System.Object]
     #Verbose specified, so we want to show the errors when checking folder lists:
-    Write-Verbose "Verbose specified, will list any problem folders"
+    Write-Verbose "Verbose specified, will list any problem folders. This will include those specified by Exclude - they will be removed from the subfolders & files"
     Try {
-        $FolderList = Get-ChildItem -Path $CheckPath -Directory -Recurse -EA stop    
+        [System.Collections.ArrayList]$FolderList = Get-ChildItem -Path $CheckPath -Directory -Recurse -EA stop    
     }
     Catch {
         $Errors.Add($PSItem.Exception.Message)
@@ -121,9 +170,33 @@ if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
 }
 Else {
     #Verbose not specified, silently continue on errors to suppress them.
-    $FolderList = Get-ChildItem -Path $CheckPath -Directory -Recurse -EA Silentlycontinue
+    [System.Collections.ArrayList]$FolderList = Get-ChildItem -Path $CheckPath -Directory -Recurse -EA Silentlycontinue
 }
 
+if ($PSBoundParameters.ContainsKey('exclude')) {
+    Write-Verbose "Exclusions passed, will now remove them from the list"
+    #Remove the "Excluded" folders from the list.
+    Foreach ($Folder in $($CheckPath)) {
+        Foreach ($Exclusion in $ExcludeList) {
+            #Write-Host "Excluding: " $Exclusion
+            if ($Exclusion -match '\\$') {
+                #Ends with a \
+                If ($Folder.FullName.StartsWith($Exclusion)) {
+                    Write-Verbose "Removing: "$Folder
+                    $FolderList.Remove($Folder)
+                }
+            }
+            Else {
+                #Doesn't end with a \
+                If ($Folder.FullName -like $Exclusion) {
+                    Write-Verbose "Removing: "$Folder
+                    $FolderList.Remove($Folder)
+                }
+            }
+        }
+    }
+    Write-Verbose "All exclusions removed. Moving on to checking path-length"
+}
 
 #check the length of the folders
 $LongFolderFullPath = New-Object System.Collections.Generic.List[System.Object]
@@ -270,7 +343,7 @@ if ($PSBoundParameters.ContainsKey('truncate')) {
     }
     #>
 
-    <#
+<#
     ### Now we check if the user really wants us to rename the files & folders...
     $TotalLongFolders = $LongFolderPath.Count
     $TotalLongFilenames = $LongFiles.Count
