@@ -6,6 +6,7 @@
     Updated 02/08/2023 to comment out the auto-truncate
     Updated 07/08/2023 to improve the Verbose output & handling of access-denied errors
     Updated 08/08/2023 to allow Excluding folders
+    Updated 08/08/2023 - added Examples to the Get-Help section.
 #>
 
 <#
@@ -18,7 +19,26 @@
     Useful for identifying files or folders which exceed the total-path length for Windows.
     Even with Exclude used, the folders will intially be "hit" by the first folder-listing - so some errors may show for them.
 
+    .EXAMPLE
+    ./"Long Paths or files.ps1" 
+    You will then be prompted for the location to save the output CSVs, the folder to scan, and the maximum length
 
+    .EXAMPLE
+    ./"Long Paths or files.ps1" -exclude "C:\Path\To\Exclude","C:\Path\To\Also\Exclude"
+    The -exclude option supports one or more paths to exclude from the subfolder & file scanning. Must be enclosed in quotes, and if multiple are supplied must be comma-seperated.
+    Folders will initially be "hit" by the first "gather list of folders" - but will then be excluded from the actual length-checking of the folder, subfolders & files.
+
+    .EXAMPLE
+    ./"Long Paths or files.ps1" -Verbose
+    As above but will output Verbose information about what it's doing.
+
+    .EXAMPLE
+    ./"Long Paths or files.ps1" -display
+    Will not prompt for a folder to save CSVs to, will instead output the list of long-files and long-folders to the console.
+
+    .EXAMPLE
+    ./"Long Paths or files.ps1" -help
+    Displays a Help message
 
 #>
 
