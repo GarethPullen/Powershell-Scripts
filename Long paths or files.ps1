@@ -6,7 +6,8 @@
     Updated 02/08/2023 to comment out the auto-truncate
     Updated 07/08/2023 to improve the Verbose output & handling of access-denied errors
     Updated 08/08/2023 to allow Excluding folders
-    Updated 08/08/2023 - added Examples to the Get-Help section.
+    Updated 08/08/2023 - added Examples, Inputs and Outputs to the Get-Help section.
+    Updated 25/10/2023 - Added WindowsForms GUI folder selector, and switch to use CLI instead.
 #>
 
 <#
@@ -63,6 +64,9 @@ Param(
     [Switch] 
     # Display results rather than writing to CSV
     $display,
+    # Use CLI to specify folders, rather than GUI prompt
+    [Switch]
+    $nogui,
     [string[]] 
     # Folders to exclude for file-scanning
     $exclude
@@ -75,12 +79,23 @@ If ($Help.IsPresent) {
     Write-Host 'It will call them "long-paths.csv" "long-files.csv" and "Long-Combined-Length.csv"'
     Write-Host 'If called with the "-display" switch it will not write to CSV and will instead just write to the console'
     Write-Host 'It supports the switches "-Silent" to suppress most messages, "-Verbose" to show more messages, "-display" to only output to the console, and "-Help" to show this'
+    Write-Host 'You can use to "-nogui" switch to NOT display a file-browser window for choosing the folders, and isntead enter the path as text when prompted - useful for network or UNC paths'
     Write-Host 'You can use the "-exclude" parameter to exclude folders for the file checking. Must be enclosed in quotes, and with a comma-separating them. They will still be "found" during the initial folder-listing'
     Write-Host 'So expect some errors if using Verbose, even with Exclude listed. They will not be scanned for subfiles & folders however.'
     Exit
 }
 
 #Main script starts here.
+
+Function GUIFolderPicker ($DescriptionText) {
+    #based on answer: https://stackoverflow.com/questions/25690038/how-do-i-properly-use-the-folderbrowserdialog-in-powershell
+    Add-Type -AssemblyName System.Windows.Forms
+    $browser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $browser.Description = $DescriptionText
+    $null = $browser.ShowDialog()
+    $SelectedPath = $browser.SelectedPath
+    Return $SelectedPath
+}
 
 Write-Host "You can use -Help to show information including other switches"
 
@@ -106,29 +121,58 @@ if (!($PSBoundParameters.ContainsKey('display'))) {
     Write-Verbose "Display switch not used, asking for output location"
     #If -dispaly is specified we don't output to CSV, so don't need an output path
     #Ask for the output path
-    Do {
-        $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
-        if (!($ExportPath -match '\\$')) {
-            #Check for a trailing "\" and add it if required.
-            $ExportPath = $ExportPath + "\"
-        }
-        If (!(Test-Path $ExportPath)) {
-            Write-Host "Invalid Path"
-        }
-        Write-verbose -Message "Checking if $ExportPath is accessible"
-    } until (Test-Path $ExportPath) 
+    if (!($PSBoundParameters.ContainsKey('nogui'))) {
+            Write-Verbose "nogui switch NOT used, so will display GUI for folder selection"
+            Write-Host "Please choose a folder to save CSV into"
+            $ExportPath = GUIFolderPicker ("Save CSV to folder...")
+            If ($ExportPath -eq "") {
+                Write-Host "No folder selected, quitting!"
+                Exit
+            }
+            if (!($ExportPath -match '\\$')) {
+                #Check for a trailing "\" and add it if required.
+                $ExportPath = $ExportPath + "\"
+            }
+    } Else {
+        Do {
+            $ExportPath = Read-Host 'Enter Folder to save Output CSV file'
+            if (!($ExportPath -match '\\$')) {
+                #Check for a trailing "\" and add it if required.
+                $ExportPath = $ExportPath + "\"
+            }
+            If (!(Test-Path $ExportPath)) {
+                Write-Host "Invalid Path"
+            }
+            Write-verbose -Message "Checking if $ExportPath is accessible"
+        } until (Test-Path $ExportPath) 
+    }
 }
 
-#Ask for the path to check
-Do {
-    $CheckPath = Read-Host 'Enter Folder to check file & folder lengths in'
-    $CheckPath = $CheckPath.Trim('"')
+if (!($PSBoundParameters.ContainsKey('nogui'))) {
+    Write-Verbose "nogui switch NOT used, so will display GUI for folder selection"
+    Write-Host "Choose the folder to check file & folder lengths in..."
+    $CheckPath = GUIFolderPicker ("Choose folder to check for long paths")
+    If ($CheckPath -eq "") {
+        Write-Host "No folder selected, quitting!"
+        Exit
+    }
     if (!($CheckPath -match '\\$')) {
         #Check for a trailing "\" and add it if required.
         $CheckPath = $CheckPath + "\"
     }
-    Write-Verbose -Message "Checking if $CheckPath is acessible"
-} until (Test-Path $CheckPath)
+} Else {
+    #nogui was set, so ask for the path
+    #Ask for the path to check
+    Do {
+        $CheckPath = Read-Host 'Enter Folder to check file & folder lengths in'
+        $CheckPath = $CheckPath.Trim('"')
+        if (!($CheckPath -match '\\$')) {
+            #Check for a trailing "\" and add it if required.
+            $CheckPath = $CheckPath + "\"
+        }
+        Write-Verbose -Message "Checking if $CheckPath is acessible"
+    } until (Test-Path $CheckPath)
+}
 
 #Change it to avoid the 260-character limit
 if ($CheckPath.Substring(0, 2) -eq "\\") {
@@ -144,7 +188,7 @@ Else {
 
 #Ask for the folder length to look for - default to 200 otherwise
 $AskUserLength = $null
-$AskUserLength = Read-Host 'Enter a maximum folder full-path length to check (defaults to 200 if nothing is entered)'
+$AskUserLength = Read-Host 'Enter a maximum folder full-path (i.e. the full "C:\folder1\folder2\...") length to check (defaults to 200 if nothing is entered)'
 Write-Verbose "Checking if a length has been specified"
 If ($AskUserLength -gt 1) {
     $FolderFullPathLength = $AskUserLength
@@ -153,7 +197,7 @@ Else {
     $FolderFullPathLength = 200
 }
 $AskUserLength = $null
-$AskUserLength = Read-Host 'Enter a maximum folder length to check (i.e. maximum length for a sigle-folder. Defaults to 50 characters)'
+$AskUserLength = Read-Host 'Enter a maximum single-folder length to check (i.e. maximum length for a sigle-folder. Defaults to 50 characters)'
 Write-Verbose "Checking if a length has been specified"
 If ($AskUserLength -gt 1) {
     $FolderLength = $AskUserLength
@@ -346,6 +390,8 @@ if (!($PSBoundParameters.ContainsKey('display'))) {
 }
 
 <#
+# This is future work for automating renaming - NOT IN USE!
+
 if ($PSBoundParameters.ContainsKey('truncate')) {
     #Check for file-length trimming options!
     $AskUserLength = $null
