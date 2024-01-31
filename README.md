@@ -63,3 +63,6 @@ This script is designed to prompt the user to select a device from Intune, and w
 
 # Long paths or files.ps1
 This script will list all files and/or folders longer than either a default length (100/200) or a user-specified length. It will also list all files where the total "file-path & length" is over 260 characters (which is the normal "Windows maximum path limit"). It will then output them to CSV files (or display to the console if the "-display" switch is used), and notify of which files have been written.
+
+# AAD-Group-member-states.ps1
+This script queries AzureAD for a list of all groups, asks the user to choose one, and then gets the members of that group. It then checks the account-status (Enabled / Disabled) of each member, and writes the output to a CSV file.
