@@ -91,14 +91,18 @@ function ToastNotify {
     [xml]$ToastTemplate = ([Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($Template).GetXml())
  
     [xml]$ToastTemplate = @"
-<toast launch="app-defined-string">
-  <visual>
-    <binding template="ToastGeneric"> 
-      <text>$TitleText</text>
-      <text>$BodyText</text>
-    </binding>
-  </visual>
-</toast>
+    <toast scenario='reminder'>
+    <visual>
+      <binding template="ToastGeneric">
+        <text>$TitleText</text>
+        <text>$BodyText</text>
+      </binding>
+    </visual>
+    <actions>
+    <action activationType="system" arguments="snooze" hint-inputId="snoozeTime" content="" />
+    <action activationType="system" arguments="dismiss" content=""/>
+    </actions>
+  </toast>
 "@
  
     $ToastXml = New-Object -TypeName Windows.Data.Xml.Dom.XmlDocument
