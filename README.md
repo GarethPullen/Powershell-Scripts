@@ -69,3 +69,6 @@ This script will list all files and/or folders longer than either a default leng
 
 # AAD-Group-member-states.ps1
 This script queries AzureAD for a list of all groups, asks the user to choose one, and then gets the members of that group. It then checks the account-status (Enabled / Disabled) of each member, and writes the output to a CSV file.
+
+# KB-Updates.ps1
+This script installs the update to patch CVE-2024-21351 & CVE-2024-21412 - depending on the Windows Version it downloads the correct MSU directly, installs it, and then notifies the user via a Toast Notification. The updates to be installed can be changed by modifying the variables at the top (the hashtable of "KBXXX = https://<url>").
