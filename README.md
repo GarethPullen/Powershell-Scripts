@@ -4,6 +4,9 @@ A collection of useful PowerShell Scripts I've created.
 # Toast-Scheduled-Task.ps1
 This script is actually just a function packaged into a PS1 file. It takes inputs as "Scheduled-Task Name" "Toast Title" and "Toast Body" - it will then write out a PowerShell script and VBScript create a scheduled task (using one of two methods depending on if it's run as System or a User) calling the VBScript (to avoid an unsightly PowerShell window briefly appearing), which in turn calls the PowerShell script to actually pop up a Toast Notification to the user. This was written so I could notify a user of a pending reboot after a PowerShell script ran as System via Intune.
 
+# Toast-Notify.ps1
+This is a function packaged into a PS1 file. It is the "Toast Notification" function (used in other scripts like the "Toast-Scheduled-Task.ps1" and "KB-Update.ps1"). This takes "Toast Title" "Toast Body" as required inputs, and an optional "-Transient" switch. By default the notifications are persistent with Snooze / Dismiss buttons, but the "-Transient" switch converts them to short-lived Toast notifications.
+
 # BulkGroupAdd.ps1
 This script asks the user for a CSV file of device names (or Dell Service Tags if they have been pre-uploaded by Dell) and will then add them to the group specified by the "$GroupID" variable (Group Object ID of an AzureAD group). It will handle quotes around the file-path and re-prompt if the file doesn't exist. It will skip over any devices that can't be found in AzureAD, and will post a message to the terminal for any which are already in the group, before moving onto the next item.
 
